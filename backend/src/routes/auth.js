@@ -12,7 +12,7 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '7d';
  * POST /api/auth/login
  * Body: { employeeNo, password }
  */
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { employeeNo, password } = req.body || {};
 
 
