@@ -89,18 +89,84 @@ router.post('/register', async (req, res) => {
   }
 });
 
-/**
- * POST /api/auth/forgot-password  — disabled in mock mode
- */
-router.post('/forgot-password', (_req, res) => {
-  res.status(403).json({ error: 'Password reset is disabled in mock mode.' });
+
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email is required.' });
+  try {
+    const conn = await pool.getConnection();
+    const [users] = await conn.query('SELECT id, full_name FROM users WHERE email = ? LIMIT 1', [email]);
+    if (users.length === 0) {
+      conn.release();
+      return res.status(404).json({ error: 'No account found for this email.' });
+    }
+    const user = users[0];
+    // Generate token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+    await conn.query(
+      'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+      [user.id, token, expiresAt]
+    );
+    conn.release();
+
+    // Send email
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+    const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: email,
+      subject: 'RTO Tracker Password Reset',
+      html: `<p>Hello ${user.full_name},</p><p>Click <a href="${resetUrl}">here</a> to reset your password. This link will expire in 1 hour.</p>`,
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to send reset email.' });
+  }
 });
 
-/**
- * POST /api/auth/reset-password  — disabled in mock mode
- */
-router.post('/reset-password', (_req, res) => {
-  res.status(403).json({ error: 'Password reset is disabled in mock mode.' });
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) return res.status(400).json({ error: 'Token and new password are required.' });
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.query(
+      'SELECT user_id, expires_at, used FROM password_reset_tokens WHERE token = ? LIMIT 1',
+      [token]
+    );
+    if (rows.length === 0) {
+      conn.release();
+      return res.status(400).json({ error: 'Invalid or expired token.' });
+    }
+    const reset = rows[0];
+    if (reset.used || new Date(reset.expires_at) < new Date()) {
+      conn.release();
+      return res.status(400).json({ error: 'Token expired or already used.' });
+    }
+    // Update password
+    const passwordHash = await bcrypt.hash(password, 10);
+    await conn.query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, reset.user_id]);
+    await conn.query('UPDATE password_reset_tokens SET used = 1 WHERE token = ?', [token]);
+    conn.release();
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reset password.' });
+  }
 });
 
 module.exports = router;
