@@ -1,0 +1,32 @@
+/* Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f0f4f8;
+  color: #1a202c;
+  min-height: 100vh;
+}
+
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --green: #16a34a;
+  --green-light: #dcfce7;
+  --green-text: #15803d;
+  --blue: #1d4ed8;
+  --blue-light: #dbeafe;
+  --blue-text: #1e40af;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-500: #6b7280;
+  --gray-700: #374151;
+  --white: #ffffff;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}

@@ -1,0 +1,20 @@
+<div class="app-shell">
+  <header class="app-header" *ngIf="auth.isLoggedIn">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="brand-icon">&#x1F3E2;</span>
+        <div>
+          <h1 class="brand-title">RTO Tracker</h1>
+          <p class="brand-sub">Return-To-Office Compliance Dashboard</p>
+        </div>
+      </div>
+      <div class="header-user">
+        <span class="welcome-text">Welcome, <strong>{{ auth.fullName }}</strong></span>
+        <button class="logout-btn" (click)="auth.logout()">Sign Out</button>
+      </div>
+    </div>
+  </header>
+  <main class="app-main" [class.no-header]="!auth.isLoggedIn">
+    <router-outlet></router-outlet>
+  </main>
+</div>
