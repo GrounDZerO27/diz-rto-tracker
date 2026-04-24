@@ -36,7 +36,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME_PROD }}
           password: ${{ secrets.FTP_PASSWORD_PROD }}
           local-dir: ./frontend/dist/rto-tracker/browser/
-          server-dir: /rto.dizweb.solutions/
+          server-dir: /
           exclude: |
             **/.git*
             **/.git*/**
@@ -59,7 +59,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME_PROD }}
           password: ${{ secrets.FTP_PASSWORD_PROD }}
           local-dir: ./backend/
-          server-dir: /rto.dizweb.solutions/backend/
+          server-dir: /backend/
           exclude: |
             **/.git*
             **/.git*/**
@@ -75,5 +75,5 @@ jobs:
         run: |
           curl -s --ftp-create-dirs \
             -T /dev/null \
-            "ftp://198.54.126.55/rto.dizweb.solutions/backend/tmp/restart.txt" \
+            "ftp://198.54.126.55/backend/tmp/restart.txt" \
             --user "${{ secrets.FTP_USERNAME_PROD }}:${{ secrets.FTP_PASSWORD_PROD }}"
