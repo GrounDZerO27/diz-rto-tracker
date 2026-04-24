@@ -1,38 +1,42 @@
 const express = require('express');
 const router  = express.Router();
-const { readDb, writeDb }            = require('../db');
+const pool = require('../db.mysql');
 const auth                           = require('../middleware/auth');
 const { toDateString, calculateRtoStats } = require('../rtoUtils');
 
 /**
  * GET /api/attendance?year=2026&month=4
  */
-router.get('/', auth, (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const year  = parseInt(req.query.year);
     const month = parseInt(req.query.month);
-
     if (!year || !month || month < 1 || month > 12) {
       return res.status(400).json({ error: 'Valid year and month (1-12) are required.' });
     }
-
     const pad = n => String(n).padStart(2, '0');
     const startDate = `${year}-${pad(month)}-01`;
     const daysInMonth = new Date(year, month, 0).getDate();
     const endDate   = `${year}-${pad(month)}-${pad(daysInMonth)}`;
 
-    const db = readDb();
+    const conn = await pool.getConnection();
+    const [attendance] = await conn.query(
+      'SELECT date, status FROM attendance WHERE user_id = ? AND date BETWEEN ? AND ?',
+      [req.user.id, startDate, endDate]
+    );
+    const [holidays] = await conn.query(
+      'SELECT date, name FROM holidays WHERE date BETWEEN ? AND ?',
+      [startDate, endDate]
+    );
+    conn.release();
 
-    const monthAttendance = db.attendance.filter(r => r.date >= startDate && r.date <= endDate);
-    const monthHolidays   = db.holidays.filter(h => h.date >= startDate && h.date <= endDate);
-
-    const inOfficeDates        = monthAttendance.filter(r => r.status === 'IN_OFFICE').map(r => r.date);
-    const approvedAbsenceDates = monthAttendance.filter(r => r.status === 'APPROVED_ABSENCE').map(r => r.date);
-    const holidayDates         = monthHolidays.map(h => h.date);
+    const inOfficeDates = attendance.filter(r => r.status === 'IN_OFFICE').map(r => r.date);
+    const approvedAbsenceDates = attendance.filter(r => r.status === 'APPROVED_ABSENCE').map(r => r.date);
+    const holidayDates = holidays.map(h => h.date);
 
     const stats = calculateRtoStats(year, month, inOfficeDates, holidayDates, approvedAbsenceDates);
 
-    res.json({ year, month, attendance: monthAttendance, holidays: monthHolidays, stats });
+    res.json({ year, month, attendance, holidays, stats });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error.' });
@@ -43,7 +47,7 @@ router.get('/', auth, (req, res) => {
  * POST /api/attendance/checkin
  * Body: { date?: 'YYYY-MM-DD', status?: 'IN_OFFICE' | 'APPROVED_ABSENCE' }
  */
-router.post('/checkin', auth, (req, res) => {
+router.post('/checkin', auth, async (req, res) => {
   try {
     const dateStr = req.body.date || toDateString(new Date());
     const status  = req.body.status || 'IN_OFFICE';
@@ -55,16 +59,13 @@ router.post('/checkin', auth, (req, res) => {
       return res.status(400).json({ error: 'Invalid status.' });
     }
 
-    const db  = readDb();
-    const idx = db.attendance.findIndex(r => r.date === dateStr);
-    if (idx >= 0) {
-      db.attendance[idx].status = status;
-    } else {
-      db.attendance.push({ date: dateStr, status });
-    }
-    db.attendance.sort((a, b) => a.date.localeCompare(b.date));
-    writeDb(db);
-
+    const conn = await pool.getConnection();
+    // Upsert attendance
+    await conn.query(
+      'INSERT INTO attendance (user_id, date, status) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)',
+      [req.user.id, dateStr, status]
+    );
+    conn.release();
     res.json({ success: true, date: dateStr, status });
   } catch (err) {
     console.error(err);
@@ -75,23 +76,21 @@ router.post('/checkin', auth, (req, res) => {
 /**
  * DELETE /api/attendance/:date
  */
-router.delete('/:date', auth, (req, res) => {
+router.delete('/:date', auth, async (req, res) => {
   try {
     const dateStr = req.params.date;
-
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
     }
-
-    const db  = readDb();
-    const idx = db.attendance.findIndex(r => r.date === dateStr);
-    if (idx < 0) {
+    const conn = await pool.getConnection();
+    const [result] = await conn.query(
+      'DELETE FROM attendance WHERE user_id = ? AND date = ?',
+      [req.user.id, dateStr]
+    );
+    conn.release();
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'No attendance record found for this date.' });
     }
-
-    db.attendance.splice(idx, 1);
-    writeDb(db);
-
     res.json({ success: true, date: dateStr });
   } catch (err) {
     console.error(err);
