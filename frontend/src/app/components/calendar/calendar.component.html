@@ -1,0 +1,209 @@
+<div class="calendar-page">
+
+  <!-- Stats Cards Row -->
+  <div class="stats-row" *ngIf="monthlyData">
+    <div class="stat-card stat-percentage">
+      <div class="stat-value" [style.color]="getPercentageColor()">{{ stats.percentage }}%</div>
+      <div class="stat-label">{{ currentMonthName }} Compliance</div>
+      <div class="stat-badge" [style.background]="getPercentageColor()">{{ getPercentageLabel() }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value blue">{{ stats.actualDays }}</div>
+      <div class="stat-label">Days In Office</div>
+      <div class="stat-sub">Actual this month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value gray">{{ stats.expectedDays }}</div>
+      <div class="stat-label">Expected Days</div>
+      <div class="stat-sub">Tue–Thu (excl. holidays &amp; leaves)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" [style.color]="stats.expectedDays - stats.actualDays > 0 ? '#dc2626' : '#16a34a'">
+        {{ stats.expectedDays - stats.actualDays }}
+      </div>
+      <div class="stat-label">Days Remaining</div>
+      <div class="stat-sub">To meet 100% target</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:#1d4ed8">{{ approvedAbsencesCount }}</div>
+      <div class="stat-label">Approved Leaves</div>
+      <div class="stat-sub">Logged this month</div>
+    </div>
+  </div>
+
+  <!-- Main Card -->
+  <div class="card">
+
+    <!-- Header: Month Nav + Check-in Button -->
+    <div class="card-header">
+      <div class="month-nav">
+        <button class="nav-btn" (click)="prevMonth()" title="Previous month">&#8249;</button>
+        <div class="month-select-group">
+          <select class="month-select" [(ngModel)]="selectedMonth" (ngModelChange)="onMonthChange()">
+            <option *ngFor="let name of monthNames; let i = index" [value]="i + 1">{{ name }}</option>
+          </select>
+          <select class="year-select" [(ngModel)]="selectedYear" (ngModelChange)="onMonthChange()">
+            <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+          </select>
+        </div>
+        <button class="nav-btn" (click)="nextMonth()" title="Next month">&#8250;</button>
+      </div>
+
+      <div class="checkin-area">
+        <button
+          class="checkin-btn"
+          (click)="checkInToday()"
+          [disabled]="checkingIn || todayAlreadyCheckedIn || todayAlreadyOnLeave || !isCurrentMonth"
+          [class.checked-in]="todayAlreadyCheckedIn && isCurrentMonth"
+        >
+          <span *ngIf="checkingIn">Checking in…</span>
+          <span *ngIf="!checkingIn && todayAlreadyCheckedIn && isCurrentMonth">✅ Checked In Today</span>
+          <span *ngIf="!checkingIn && !(todayAlreadyCheckedIn && isCurrentMonth) && !todayAlreadyOnLeave">📍 I'm In The Office Today</span>
+          <span *ngIf="!checkingIn && todayAlreadyOnLeave && isCurrentMonth">🏖 On Approved Leave</span>
+        </button>
+        <button
+          class="leave-btn"
+          (click)="logLeaveToday()"
+          [disabled]="loggingLeave || todayAlreadyOnLeave || todayAlreadyCheckedIn || !isCurrentMonth"
+          [class.leave-taken]="todayAlreadyOnLeave && isCurrentMonth"
+          [title]="todayIsRtoDay ? 'Approved leave on Tue–Thu is credited toward RTO' : 'Leave on Mon/Fri does not affect RTO'"
+        >
+          <span *ngIf="loggingLeave">Logging leave…</span>
+          <span *ngIf="!loggingLeave && todayAlreadyOnLeave && isCurrentMonth">✅ Leave Logged</span>
+          <span *ngIf="!loggingLeave && !(todayAlreadyOnLeave && isCurrentMonth)">📅 Log Approved Leave Today</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+    <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-overlay" *ngIf="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="calendar-grid" *ngIf="!loading">
+      <!-- Day headers -->
+      <div class="day-header">Mon</div>
+      <div class="day-header">Tue</div>
+      <div class="day-header">Wed</div>
+      <div class="day-header">Thu</div>
+      <div class="day-header">Fri</div>
+
+      <!-- Weeks -->
+      <ng-container *ngFor="let week of calendarWeeks">
+        <div
+          *ngFor="let day of week"
+          class="day-cell"
+          [class.other-month]="!day.isCurrentMonth"
+          [class.in-office]="day.isInOffice && !day.isHoliday"
+          [class.approved-absence]="day.isApprovedAbsence && !day.isHoliday"
+          [class.holiday]="day.isHoliday"
+          [class.today]="day.isToday"
+          [class.rto-day]="day.isRtoDay && day.isCurrentMonth && !day.isHoliday && !day.isInOffice && !day.isApprovedAbsence"
+          [class.non-rto-day]="!day.isRtoDay && day.isCurrentMonth && !day.isInOffice && !day.isApprovedAbsence"
+          [class.clickable]="day.isCurrentMonth && !day.isHoliday"
+          [title]="day.isCurrentMonth && !day.isHoliday ? 'Click to log attendance or leave' : ''"
+          (click)="openDayModal(day)"
+        >
+          <span class="day-number">{{ day.dayNumber }}</span>
+          <span class="day-indicator" *ngIf="day.isInOffice && !day.isHoliday">✓</span>
+          <span class="day-indicator" *ngIf="day.isApprovedAbsence && !day.isHoliday && day.isRtoDay">🏖</span>
+          <span class="day-indicator" *ngIf="day.isApprovedAbsence && !day.isHoliday && !day.isRtoDay">📅</span>
+          <span class="holiday-label" *ngIf="day.isHoliday">{{ day.holidayName }}</span>
+          <span class="today-dot" *ngIf="day.isToday"></span>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-swatch green"></div>
+        <span>In Office</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch blue"></div>
+        <span>Approved Leave (Tue–Thu = credited)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch blue-light"></div>
+        <span>Approved Leave (Mon/Fri = no RTO impact)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch amber"></div>
+        <span>Public Holiday</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch rto"></div>
+        <span>Expected RTO Day (Tue–Thu)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch white"></div>
+        <span>No Record (Mon/Fri)</span>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="notes">
+      <strong>Notes:</strong>
+      <ul>
+        <li><u>In-office presence %</u>: Actual in-office days ÷ expected in-office days (Tue–Thu only, excl. holidays &amp; approved leaves).</li>
+        <li><u>Click any weekday</u> to open the action menu and choose <strong>In Office</strong> or <strong>Approved Leave</strong>.</li>
+        <li><u>Approved leave on Tue–Thu</u> is credited — it reduces expected days and does NOT hurt your RTO %.</li>
+        <li><u>Approved leave on Mon/Fri</u> is shown but has no RTO impact.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Day Action Modal -->
+<div class="modal-overlay" *ngIf="selectedDay" (click)="closeDayModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-date-label">{{ getDayLabel(selectedDay) }}</div>
+      <button class="modal-close" (click)="closeDayModal()">&#x2715;</button>
+    </div>
+
+    <div class="modal-status" *ngIf="selectedDay.isInOffice">
+      <span class="status-badge in-office">✓ Currently: In Office</span>
+    </div>
+    <div class="modal-status" *ngIf="selectedDay.isApprovedAbsence">
+      <span class="status-badge approved-leave">
+        {{ selectedDay.isRtoDay ? '🏖 Currently: Approved Leave (credited)' : '📅 Currently: Approved Leave (no RTO impact)' }}
+      </span>
+    </div>
+    <div class="modal-status" *ngIf="!selectedDay.isInOffice && !selectedDay.isApprovedAbsence">
+      <span class="status-badge empty">○ No record for this day</span>
+    </div>
+
+    <div class="modal-actions">
+      <button
+        class="modal-btn btn-office"
+        (click)="setDayStatus('IN_OFFICE')"
+        [class.active]="selectedDay.isInOffice"
+      >
+        📍 In Office
+      </button>
+      <button
+        class="modal-btn btn-leave"
+        (click)="setDayStatus('APPROVED_ABSENCE')"
+        [class.active]="selectedDay.isApprovedAbsence"
+      >
+        📅 Approved Leave
+        <span class="rto-hint" *ngIf="selectedDay.isRtoDay">(credited to RTO)</span>
+        <span class="rto-hint no-impact" *ngIf="!selectedDay.isRtoDay">(no RTO impact)</span>
+      </button>
+      <button
+        class="modal-btn btn-clear"
+        (click)="clearDay()"
+        *ngIf="selectedDay.isInOffice || selectedDay.isApprovedAbsence"
+      >
+        🗑 Remove Record
+      </button>
+    </div>
+  </div>
+</div>
