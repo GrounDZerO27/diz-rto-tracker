@@ -394,6 +394,17 @@
   max-width: 400px;
   width: 90%;
   animation: slideUp 0.18s ease;
+  position: relative;
+}
+/* Modal loading overlay */
+.modal-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
 }
 @keyframes slideUp {
   from { transform: translateY(16px); opacity: 0; }

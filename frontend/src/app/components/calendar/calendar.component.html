@@ -162,7 +162,10 @@
 
 <!-- Day Action Modal -->
 <div class="modal-overlay" *ngIf="selectedDay" (click)="closeDayModal()">
-  <div class="modal" (click)="$event.stopPropagation()">
+  <div class="modal" (click)="$event.stopPropagation()" style="position:relative;">
+    <div *ngIf="modalLoading" class="modal-loading-overlay">
+      <div class="spinner"></div>
+    </div>
     <div class="modal-header">
       <div class="modal-date-label">{{ getDayLabel(selectedDay) }}</div>
       <button class="modal-close" (click)="closeDayModal()">&#x2715;</button>
