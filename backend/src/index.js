@@ -8,7 +8,10 @@ const authRoutes       = require('./routes/auth');
 const attendanceRoutes = require('./routes/attendance');
 const holidayRoutes    = require('./routes/holidays');
 
+
 const app  = express();
+// Trust first proxy (needed for express-rate-limit behind proxy/cPanel)
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Security headers

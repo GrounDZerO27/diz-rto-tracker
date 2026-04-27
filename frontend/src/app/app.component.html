@@ -2,7 +2,7 @@
   <header class="app-header" *ngIf="auth.isLoggedIn">
     <div class="header-inner">
       <div class="header-brand">
-        <span class="brand-icon">&#x1F3E2;</span>
+        <img src="assets/calendar-svgrepo-com.svg" alt="RTO Tracker Logo" class="brand-icon" />
         <div>
           <h1 class="brand-title">RTO Tracker</h1>
           <p class="brand-sub">Return-To-Office Compliance Dashboard</p>
@@ -17,4 +17,5 @@
   <main class="app-main" [class.no-header]="!auth.isLoggedIn">
     <router-outlet></router-outlet>
   </main>
+  <app-footer></app-footer>
 </div>

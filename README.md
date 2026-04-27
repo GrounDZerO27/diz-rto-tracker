@@ -100,3 +100,35 @@ The Angular dev server proxies `/api` requests to `http://localhost:3000` via `p
 
 - Holidays for the Philippines are pre-seeded in `backend/data/db.json`.
 - `db.json` is committed to source control so historical data travels with the repo. Remove or gitignore it if you want a clean slate on each clone.
+
+---
+
+## Email & Password Reset
+
+- The backend supports password reset via email using Nodemailer.
+- You must provide valid SMTP credentials in your `.env` file (not included in this repo).
+- For production, ensure your environment variables are set and the Node.js server is restarted after changes.
+- For security, do not commit or share your SMTP credentials.
+
+---
+
+## Production Deployment
+
+- The project includes a GitHub Actions workflow for CI/CD.
+- The backend and frontend are deployed via FTP to your server.
+- Sensitive files like `.env` and `db.json` are excluded from deployment for security.
+- After deployment, use your hosting control panel or the workflow's restart step to restart the Node.js app.
+
+---
+
+## Troubleshooting
+
+- **500 errors on /api/auth/login or /api/auth/forgot-password:**
+  - Check backend logs for details (e.g., SMTP issues, missing environment variables).
+  - Ensure `.env` is present and correct on the server.
+- **express-rate-limit X-Forwarded-For error:**
+  - The backend sets `app.set('trust proxy', 1);` for compatibility with proxies/cPanel.
+- **Email not sending:**
+  - Double-check SMTP settings and password.
+  - Check spam folder.
+  - Review backend logs for Nodemailer errors.
