@@ -20,8 +20,20 @@ router.post('/register', async (req, res) => {
     if (!fullName || !employeeNo || !email || !password) {
       return res.status(400).json({ error: 'All fields are required.' });
     }
+    if (fullName.trim().length > 100) {
+      return res.status(400).json({ error: 'Full name must be 100 characters or fewer.' });
+    }
+    if (employeeNo.trim().length > 50) {
+      return res.status(400).json({ error: 'Employee number must be 50 characters or fewer.' });
+    }
+    if (email.trim().length > 150) {
+      return res.status(400).json({ error: 'Email must be 150 characters or fewer.' });
+    }
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+    if (password.length > 72) {
+      return res.status(400).json({ error: 'Password must be 72 characters or fewer.' });
     }
 
     const [existing] = await pool.query(
@@ -111,6 +123,12 @@ router.post('/forgot-password', async (req, res) => {
     const user  = rows[0];
     const token = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Invalidate any existing unused tokens for this user before creating a new one
+    await pool.query(
+      'UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0',
+      [user.id]
+    );
 
     await pool.query(
       'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
