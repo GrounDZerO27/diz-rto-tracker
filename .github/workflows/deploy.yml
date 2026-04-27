@@ -61,7 +61,7 @@ jobs:
 
       - name: Install production dependencies
         working-directory: backend
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --no-audit
 
       - name: Deploy backend source via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
