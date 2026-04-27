@@ -17,5 +17,5 @@
   <main class="app-main" [class.no-header]="!auth.isLoggedIn">
     <router-outlet></router-outlet>
   </main>
-  <app-footer></app-footer>
+  <app-footer *ngIf="auth.isLoggedIn"></app-footer>
 </div>
