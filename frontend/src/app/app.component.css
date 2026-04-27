@@ -23,7 +23,7 @@
   align-items: center;
   gap: 14px;
 }
-.brand-icon { font-size: 2rem; }
+.brand-icon { font-size: 24px; height: 40px; }
 .brand-title {
   font-size: 1.4rem;
   font-weight: 700;
