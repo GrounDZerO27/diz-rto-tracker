@@ -31,7 +31,6 @@ export class CalendarComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
   selectedDay: CalendarDay | null = null;
-  modalLoading = false;
 
   years: number[] = [];
   monthNames = MONTH_NAMES;
@@ -172,36 +171,20 @@ export class CalendarComponent implements OnInit {
   setDayStatus(status: 'IN_OFFICE' | 'APPROVED_ABSENCE'): void {
     if (!this.selectedDay) return;
     const day = this.selectedDay;
-    this.modalLoading = true;
+    this.closeDayModal();
     this.rtoService.checkIn(day.date, status).subscribe({
-      next: () => {
-        this.loadData();
-        this.modalLoading = false;
-        this.closeDayModal();
-      },
-      error: (err) => {
-        this.errorMessage = 'Failed to update record.';
-        this.modalLoading = false;
-        console.error(err);
-      },
+      next: () => this.loadData(),
+      error: (err) => { this.errorMessage = 'Failed to update record.'; console.error(err); },
     });
   }
 
   clearDay(): void {
     if (!this.selectedDay) return;
     const day = this.selectedDay;
-    this.modalLoading = true;
+    this.closeDayModal();
     this.rtoService.removeAttendance(day.date).subscribe({
-      next: () => {
-        this.loadData();
-        this.modalLoading = false;
-        this.closeDayModal();
-      },
-      error: (err) => {
-        this.errorMessage = 'Failed to remove record.';
-        this.modalLoading = false;
-        console.error(err);
-      },
+      next: () => this.loadData(),
+      error: (err) => { this.errorMessage = 'Failed to remove record.'; console.error(err); },
     });
   }
 
