@@ -1,23 +1,30 @@
 const express = require('express');
 const router  = express.Router();
-const { readDb, writeDb } = require('../db');
-const auth                = require('../middleware/auth');
+const pool    = require('../db');
+const auth    = require('../middleware/auth');
+const { toDateString } = require('../rtoUtils');
 
 /**
  * GET /api/holidays?year=2026
  */
-router.get('/', auth, (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const year = parseInt(req.query.year);
     if (!year || year < 2000 || year > 2100) {
       return res.status(400).json({ error: 'A valid year (2000-2100) is required.' });
     }
 
-    const prefix = String(year) + '-';
-    const db = readDb();
-    const rows = db.holidays.filter(h => h.date.startsWith(prefix));
+    const [rows] = await pool.query(
+      "SELECT date, name FROM holidays WHERE YEAR(date) = ? ORDER BY date",
+      [year]
+    );
 
-    res.json(rows);
+    const holidays = rows.map(h => ({
+      date: h.date instanceof Date ? toDateString(h.date) : String(h.date),
+      name: h.name,
+    }));
+
+    res.json(holidays);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error.' });
@@ -27,7 +34,7 @@ router.get('/', auth, (req, res) => {
 /**
  * POST /api/holidays  { date, name }
  */
-router.post('/', auth, (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const { date, name } = req.body;
     if (!date || !name) return res.status(400).json({ error: 'date and name are required.' });
@@ -35,15 +42,10 @@ router.post('/', auth, (req, res) => {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
     }
 
-    const db  = readDb();
-    const idx = db.holidays.findIndex(h => h.date === date);
-    if (idx >= 0) {
-      db.holidays[idx].name = name;
-    } else {
-      db.holidays.push({ date, name });
-      db.holidays.sort((a, b) => a.date.localeCompare(b.date));
-    }
-    writeDb(db);
+    await pool.query(
+      'INSERT INTO holidays (date, name) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)',
+      [date, name]
+    );
 
     res.json({ success: true, date, name });
   } catch (err) {
@@ -55,21 +57,21 @@ router.post('/', auth, (req, res) => {
 /**
  * DELETE /api/holidays/:date
  */
-router.delete('/:date', auth, (req, res) => {
+router.delete('/:date', auth, async (req, res) => {
   try {
     const dateStr = req.params.date;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
     }
 
-    const db  = readDb();
-    const idx = db.holidays.findIndex(h => h.date === dateStr);
-    if (idx < 0) {
+    const [result] = await pool.query(
+      'DELETE FROM holidays WHERE date = ?',
+      [dateStr]
+    );
+
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'No holiday found for this date.' });
     }
-
-    db.holidays.splice(idx, 1);
-    writeDb(db);
 
     res.json({ success: true, date: dateStr });
   } catch (err) {

@@ -1,5 +1,15 @@
 const nodemailer = require('nodemailer');
 
+/** Escape special HTML characters to prevent injection in email bodies */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 const transporter = nodemailer.createTransport({
   host:   process.env.SMTP_HOST,
   port:   parseInt(process.env.SMTP_PORT || '465'),
@@ -11,6 +21,7 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendPasswordResetEmail(toEmail, toName, resetLink) {
+  const safeName = escapeHtml(toName);
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -37,7 +48,7 @@ async function sendPasswordResetEmail(toEmail, toName, resetLink) {
           <tr>
             <td style="padding:36px 40px 28px;">
               <h2 style="margin:0 0 16px;color:#111827;font-size:18px;font-weight:700;">Password Reset Request</h2>
-              <p style="margin:0 0 12px;color:#374151;font-size:14px;line-height:1.6;">Hi <strong>${toName}</strong>,</p>
+              <p style="margin:0 0 12px;color:#374151;font-size:14px;line-height:1.6;">Hi <strong>${safeName}</strong>,</p>
               <p style="margin:0 0 24px;color:#374151;font-size:14px;line-height:1.6;">
                 We received a request to reset your <strong>RTO Tracker</strong> account password.
                 Click the button below to choose a new password:
@@ -102,7 +113,7 @@ async function sendPasswordResetEmail(toEmail, toName, resetLink) {
     to:      toEmail,
     subject: 'Reset Your RTO Tracker Password',
     html,
-    text: `Hi ${toName},\n\nReset your RTO Tracker password using this link (expires in 1 hour):\n${resetLink}\n\nIf you did not request this, ignore this email.\n\n— RTO Tracker`,
+    text: `Hi ${safeName},\n\nReset your RTO Tracker password using this link (expires in 1 hour):\n${resetLink}\n\nIf you did not request this, ignore this email.\n\n— RTO Tracker`,
   });
 }
 

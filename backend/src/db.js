@@ -1,14 +1,14 @@
-const fs   = require('fs');
-const path = require('path');
+const mysql = require('mysql2/promise');
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'db.json');
+const pool = mysql.createPool({
+  host:               process.env.DB_HOST     || 'localhost',
+  port:               parseInt(process.env.DB_PORT || '3306'),
+  user:               process.env.DB_USER,
+  password:           process.env.DB_PASSWORD,
+  database:           process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit:    10,
+  queueLimit:         0,
+});
 
-function readDb() {
-  return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-}
-
-function writeDb(data) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
-}
-
-module.exports = { readDb, writeDb };
+module.exports = pool;
