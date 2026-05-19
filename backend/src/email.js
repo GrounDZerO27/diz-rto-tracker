@@ -10,18 +10,58 @@ function escapeHtml(str) {
     .replace(/'/g, '&#x27;');
 }
 
-const transporter = nodemailer.createTransport({
-  host:   process.env.SMTP_HOST,
-  port:   parseInt(process.env.SMTP_PORT || '465'),
+function createTransport(options) {
+  return nodemailer.createTransport({
+    host: options.host,
+    port: options.port,
+    secure: options.secure,
+    auth: options.auth,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+  });
+}
+
+const primaryTransport = createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '465', 10),
   secure: process.env.SMTP_SECURE === 'true',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  connectionTimeout: 10000, // 10 s — fail fast instead of hanging
-  greetingTimeout:   10000,
-  socketTimeout:     10000,
 });
+
+const fallbackTransport = createTransport({
+  host: process.env.SMTP_FALLBACK_HOST || 'localhost',
+  port: parseInt(process.env.SMTP_FALLBACK_PORT || '25', 10),
+  secure: process.env.SMTP_FALLBACK_SECURE === 'true',
+  auth: process.env.SMTP_FALLBACK_USER
+    ? {
+        user: process.env.SMTP_FALLBACK_USER,
+        pass: process.env.SMTP_FALLBACK_PASS,
+      }
+    : undefined,
+});
+
+async function sendWithFallback(mailOptions) {
+  try {
+    await primaryTransport.sendMail(mailOptions);
+    return;
+  } catch (err) {
+    const fallbackEnabled = process.env.SMTP_FALLBACK_ENABLED !== 'false';
+    const shouldFallback = err && (err.code === 'ETIMEDOUT' || err.code === 'ESOCKET');
+    if (!fallbackEnabled || !shouldFallback) throw err;
+
+    console.warn(
+      `Primary SMTP failed (${err.code || 'UNKNOWN'}). ` +
+      `Retrying via fallback ${process.env.SMTP_FALLBACK_HOST || 'localhost'}:` +
+      `${process.env.SMTP_FALLBACK_PORT || '25'}.`
+    );
+
+    await fallbackTransport.sendMail(mailOptions);
+  }
+}
 
 async function sendPasswordResetEmail(toEmail, toName, resetLink) {
   const safeName = escapeHtml(toName);
@@ -111,7 +151,7 @@ async function sendPasswordResetEmail(toEmail, toName, resetLink) {
 </body>
 </html>`;
 
-  await transporter.sendMail({
+  await sendWithFallback({
     from:    process.env.SMTP_FROM || '"RTO Tracker" <noreply@dizweb.solutions>',
     to:      toEmail,
     subject: 'Reset Your RTO Tracker Password',
