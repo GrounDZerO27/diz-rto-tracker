@@ -64,9 +64,13 @@ export class AuthService {
 
   private isTokenExpired(token: string): boolean {
     try {
-      // JWT uses base64url — replace URL-safe chars and restore padding before decoding
-      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(atob(base64));
+      const payloadSegment = token.split('.')[1];
+      if (!payloadSegment) return true;
+
+      // JWT uses base64url — replace URL-safe chars and restore required padding before decoding
+      const base64 = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+      const normalizedBase64 = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+      const payload = JSON.parse(atob(normalizedBase64));
       return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now();
     } catch {
       return true;
