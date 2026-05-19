@@ -31,6 +31,8 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
+  // Suppress the X-Forwarded-For validation warning when running behind cPanel/reverse proxy
+  validate: { xForwardedForHeader: false },
 });
 
 // Routes

@@ -18,6 +18,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 10000, // 10 s — fail fast instead of hanging
+  greetingTimeout:   10000,
+  socketTimeout:     10000,
 });
 
 async function sendPasswordResetEmail(toEmail, toName, resetLink) {
