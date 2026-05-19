@@ -7,7 +7,7 @@ const pool     = require('../db');
 const { sendPasswordResetEmail } = require('../email');
 
 const JWT_SECRET  = process.env.JWT_SECRET  || 'dev-secret-change-in-prod';
-const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '24h';
 const APP_URL     = process.env.APP_URL || 'http://localhost:4200';
 
 /**
@@ -136,7 +136,12 @@ router.post('/forgot-password', async (req, res) => {
     );
 
     const resetLink = `${APP_URL}/reset-password?token=${token}`;
-    await sendPasswordResetEmail(email.trim().toLowerCase(), user.full_name, resetLink);
+    try {
+      await sendPasswordResetEmail(email.trim().toLowerCase(), user.full_name, resetLink);
+    } catch (mailErr) {
+      // Log but do not expose mail delivery failures to the client
+      console.error('Failed to send password reset email:', mailErr);
+    }
 
     res.json({ message: 'If that email is registered, a reset link has been sent.' });
   } catch (err) {

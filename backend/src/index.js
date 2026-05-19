@@ -25,12 +25,19 @@ app.use(cors({ origin: allowedOrigin, credentials: false }));
 app.use(express.json({ limit: '10kb' }));
 
 // Rate limiting on auth endpoints: max 20 requests per 15 min per IP
+// Note on XFF/trust-proxy: app.set('trust proxy', 1) above instructs Express to
+// resolve req.ip from the first X-Forwarded-For hop, which is the value the rate
+// limiter uses as the key. express-rate-limit's own XFF validator is redundant
+// here and throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR on cPanel's multi-value
+// XFF headers, so it is disabled. IP spoofing via XFF is already mitigated by
+// Express only trusting one proxy hop.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
+  validate: { xForwardedForHeader: false },
 });
 
 // Routes

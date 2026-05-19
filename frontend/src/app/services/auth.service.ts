@@ -36,9 +36,7 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(FULLNAME_KEY);
-    localStorage.removeItem(EMPNO_KEY);
+    this.clearSession();
     this.router.navigate(['/login']);
   }
 
@@ -55,7 +53,34 @@ export class AuthService {
   }
 
   get isLoggedIn(): boolean {
-    return !!this.token;
+    const token = this.token;
+    if (!token) return false;
+    if (this.isTokenExpired(token)) {
+      this.clearSession(); // guard handles the redirect to /login
+      return false;
+    }
+    return true;
+  }
+
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payloadSegment = token.split('.')[1];
+      if (!payloadSegment) return true;
+
+      // JWT uses base64url — replace URL-safe chars and restore required padding before decoding
+      const base64 = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+      const normalizedBase64 = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+      const payload = JSON.parse(atob(normalizedBase64));
+      return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  }
+
+  private clearSession(): void {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(FULLNAME_KEY);
+    localStorage.removeItem(EMPNO_KEY);
   }
 
   private storeSession(res: AuthResponse): void {
