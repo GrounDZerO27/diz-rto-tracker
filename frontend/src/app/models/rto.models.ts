@@ -6,6 +6,7 @@ export interface AttendanceRecord {
 export interface Holiday {
   date: string;   // YYYY-MM-DD
   name: string;
+  isShared?: boolean;
 }
 
 export interface RtoStats {
@@ -35,6 +36,7 @@ export interface CalendarDay {
   isApprovedAbsence: boolean;
   isHoliday: boolean;
   holidayName?: string;
+  isSharedHoliday?: boolean;
   isPast: boolean;
 }
 

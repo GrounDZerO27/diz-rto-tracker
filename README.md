@@ -1,21 +1,22 @@
-# RTO Tracker &nbsp;![version](https://img.shields.io/badge/version-1.0.0-blue)
+# RTO Tracker &nbsp;![version](https://img.shields.io/badge/version-3.0.0-blue)
 
 Personal return-to-office compliance tracker. Logs daily attendance against company RTO policy (Tue/Wed/Thu requirement) and gives a monthly compliance percentage at a glance.
 
-Built with Angular 17, Node.js + Express, and JSON file storage.
+Built with Angular 17, Node.js + Express, and MySQL.
 
 ---
 
 ## Features
 
 - Monthly calendar — weekdays only, weekends hidden
-- Click any day to log it as **In Office** or **Approved Leave**
+- Click any day to log it as **In Office**, **Approved Leave**, or **Holiday**
 - Quick-action buttons for today's attendance without opening the modal
 - Approved leaves on Tue–Thu are credited and do not hurt compliance
 - Philippine public holidays automatically excluded from expected days
+- **Manual holiday entry** — click any weekday in the modal to mark it as a holiday, enter a name/note, and save it directly to the holidays table; existing holidays can be updated or removed the same way
 - Stats cards: expected days, actual days, compliance %, approved absences
 - Month navigation to review historical months
-- Data persists in a local JSON file — no database server required
+- Data persists in MySQL — shared across devices and deployments
 
 ---
 
@@ -37,20 +38,22 @@ Built with Angular 17, Node.js + Express, and JSON file storage.
 ```
 rto-tracker/
 ├── backend/
-│   ├── data/
-│   │   └── db.json          # Persistent data store
+│   ├── schema.sql            # MySQL schema + holiday seed data
 │   └── src/
 │       ├── index.js          # Express entry point (port 3000)
-│       ├── db.js             # JSON read/write helpers
+│       ├── db.mysql.js       # MySQL connection pool
 │       ├── rtoUtils.js       # Compliance calculation logic
 │       └── routes/
 │           ├── attendance.js
-│           └── holidays.js
+│           ├── holidays.js
+│           └── auth.js
 │
 └── frontend/
     └── src/app/
         ├── models/rto.models.ts
-        ├── services/rto.service.ts
+        ├── services/
+        │   ├── rto.service.ts
+        │   └── auth.service.ts
         └── components/calendar/
             ├── calendar.component.ts
             ├── calendar.component.html
@@ -69,7 +72,7 @@ npm install
 node src/index.js     # http://localhost:3000
 ```
 
-`db.json` is gitignored — each person keeps their own attendance locally. On first run, the backend auto-creates `backend/data/db.json` with Philippine public holidays and an empty attendance list. A reference copy is at `backend/data/db.example.json`.
+Requires a MySQL database. Run `schema.sql` once to create tables and seed Philippine public holidays. Configure credentials in `backend/.env` (see `.env.example` if present).
 
 ### Frontend
 
@@ -91,15 +94,20 @@ The Angular dev server proxies `/api` requests to `http://localhost:3000` via `p
 | POST | `/api/attendance/checkin` | `{ date?, status }` | Upsert a record (`IN_OFFICE` or `APPROVED_ABSENCE`) |
 | DELETE | `/api/attendance/:date` | — | Remove a record by date (`YYYY-MM-DD`) |
 | GET | `/api/holidays` | `?year=` | List holidays for a year |
-| POST | `/api/holidays` | `{ date, name }` | Add a holiday |
+| POST | `/api/holidays` | `{ date, name }` | Add or update a holiday (used by manual holiday entry) |
 | DELETE | `/api/holidays/:date` | — | Remove a holiday |
+| POST | `/api/auth/register` | `{ fullName, employeeNo, email, password }` | Register a new user |
+| POST | `/api/auth/login` | `{ employeeNo, password }` | Login and receive a JWT |
+| POST | `/api/auth/forgot-password` | `{ email }` | Send password reset email |
+| POST | `/api/auth/reset-password` | `{ token, password }` | Reset password via token |
 
 ---
 
 ## Notes
 
-- Holidays for the Philippines are pre-seeded in `backend/data/db.json`.
-- `db.json` is committed to source control so historical data travels with the repo. Remove or gitignore it if you want a clean slate on each clone.
+- Philippine public holidays for 2026 are pre-seeded via `schema.sql`.
+- **Manual holiday entry** is per-user (stored in the shared `holidays` table) — any weekday in the calendar modal now has a Holiday button where you can type a holiday name and save it directly.
+- The holiday entry form pre-fills the existing name when editing a day already marked as a holiday.
 
 ---
 

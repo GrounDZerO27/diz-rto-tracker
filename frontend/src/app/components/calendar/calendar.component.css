@@ -282,7 +282,7 @@
   background: #fef3c7;
   border-color: #f59e0b;
   color: #78350f;
-  cursor: default;
+  cursor: pointer;
 }
 
 .holiday-label {
@@ -437,7 +437,37 @@
 }
 .status-badge.in-office      { background: #dcfce7; color: #15803d; }
 .status-badge.approved-leave { background: #dbeafe; color: #1e40af; }
+.status-badge.holiday        { background: #fef3c7; color: #92400e; }
 .status-badge.empty          { background: var(--gray-100); color: var(--gray-500); }
+
+.holiday-entry {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.holiday-entry-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+.holiday-input {
+  border: 1px solid var(--gray-300);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  outline: none;
+}
+.holiday-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+}
+.holiday-entry-hint {
+  font-size: 0.72rem;
+  color: var(--gray-500);
+  line-height: 1.45;
+}
 
 .modal-actions {
   display: flex;
@@ -478,6 +508,18 @@
   border-color: #1d4ed8;
   color: white;
 }
+.btn-holiday {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+.btn-holiday:hover, .btn-holiday.active {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+}
+.btn-holiday:hover .rto-hint,
+.btn-holiday.active .rto-hint { color: rgba(255,255,255,0.82); }
 .btn-leave.active .rto-hint,
 .btn-leave:hover .rto-hint { color: rgba(255,255,255,0.8); }
 

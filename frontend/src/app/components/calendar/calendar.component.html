@@ -105,8 +105,8 @@
           [class.today]="day.isToday"
           [class.rto-day]="day.isRtoDay && day.isCurrentMonth && !day.isHoliday && !day.isInOffice && !day.isApprovedAbsence"
           [class.non-rto-day]="!day.isRtoDay && day.isCurrentMonth && !day.isInOffice && !day.isApprovedAbsence"
-          [class.clickable]="day.isCurrentMonth && !day.isHoliday"
-          [title]="day.isCurrentMonth && !day.isHoliday ? 'Click to log attendance or leave' : ''"
+          [class.clickable]="day.isCurrentMonth && !day.isWeekend"
+          [title]="day.isCurrentMonth && !day.isWeekend ? (day.isHoliday ? 'Click to manage holiday' : 'Click to log attendance or leave') : ''"
           (click)="openDayModal(day)"
         >
           <span class="day-number">{{ day.dayNumber }}</span>
@@ -176,8 +176,28 @@
         {{ selectedDay.isRtoDay ? '🏖 Currently: Approved Leave (credited)' : '📅 Currently: Approved Leave (no RTO impact)' }}
       </span>
     </div>
-    <div class="modal-status" *ngIf="!selectedDay.isInOffice && !selectedDay.isApprovedAbsence">
+    <div class="modal-status" *ngIf="selectedDay.isHoliday">
+      <span class="status-badge holiday">
+        🏛 Currently: Holiday - {{ selectedDay.holidayName }}
+      </span>
+    </div>
+    <div class="modal-status" *ngIf="!selectedDay.isInOffice && !selectedDay.isApprovedAbsence && !selectedDay.isHoliday">
       <span class="status-badge empty">○ No record for this day</span>
+    </div>
+
+    <div class="holiday-entry" *ngIf="selectedDay && !selectedDay.isSharedHoliday">
+      <label class="holiday-entry-label" for="holidayName">Holiday name</label>
+      <input
+        id="holidayName"
+        class="holiday-input"
+        type="text"
+        [(ngModel)]="holidayNameDraft"
+        placeholder="e.g. Labor Day"
+        maxlength="150"
+      />
+      <div class="holiday-entry-hint">
+        Save a manual holiday entry for this date. The note is used as the holiday name.
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -198,11 +218,29 @@
         <span class="rto-hint no-impact" *ngIf="!selectedDay.isRtoDay">(no RTO impact)</span>
       </button>
       <button
+        class="modal-btn btn-holiday"
+        (click)="saveHoliday()"
+        [disabled]="savingHoliday || !holidayNameDraft.trim()"
+        [class.active]="selectedDay.isHoliday"
+        *ngIf="!selectedDay.isSharedHoliday"
+      >
+        🏛 {{ selectedDay.isHoliday ? 'Update Holiday' : 'Holiday' }}
+        <span class="rto-hint holiday-hint">{{ selectedDay.isHoliday ? 'edit note / name' : 'manual holiday entry' }}</span>
+      </button>
+      <button
         class="modal-btn btn-clear"
         (click)="clearDay()"
         *ngIf="selectedDay.isInOffice || selectedDay.isApprovedAbsence"
       >
         🗑 Remove Record
+      </button>
+      <button
+        class="modal-btn btn-clear btn-remove-holiday"
+        (click)="removeHoliday()"
+        [disabled]="savingHoliday"
+        *ngIf="selectedDay.isHoliday && !selectedDay.isSharedHoliday"
+      >
+        🗑 Remove Holiday
       </button>
     </div>
   </div>

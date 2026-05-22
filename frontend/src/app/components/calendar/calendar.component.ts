@@ -28,9 +28,11 @@ export class CalendarComponent implements OnInit {
   loading = false;
   checkingIn = false;
   loggingLeave = false;
+  savingHoliday = false;
   errorMessage = '';
   successMessage = '';
   selectedDay: CalendarDay | null = null;
+  holidayNameDraft = '';
 
   years: number[] = [];
   monthNames = MONTH_NAMES;
@@ -160,12 +162,14 @@ export class CalendarComponent implements OnInit {
    * Opens the action modal for a day cell.
    */
   openDayModal(day: CalendarDay): void {
-    if (!day.isCurrentMonth || day.isWeekend || day.isHoliday) return;
+    if (!day.isCurrentMonth || day.isWeekend) return;
     this.selectedDay = day;
+    this.holidayNameDraft = day.holidayName ?? '';
   }
 
   closeDayModal(): void {
     this.selectedDay = null;
+    this.holidayNameDraft = '';
   }
 
   setDayStatus(status: 'IN_OFFICE' | 'APPROVED_ABSENCE'): void {
@@ -185,6 +189,64 @@ export class CalendarComponent implements OnInit {
     this.rtoService.removeAttendance(day.date).subscribe({
       next: () => this.loadData(),
       error: (err) => { this.errorMessage = 'Failed to remove record.'; console.error(err); },
+    });
+  }
+
+  saveHoliday(): void {
+    if (!this.selectedDay) return;
+
+    const name = this.holidayNameDraft.trim();
+    if (!name) {
+      this.errorMessage = 'Holiday name is required.';
+      return;
+    }
+    if (name.length > 150) {
+      this.errorMessage = 'Holiday name must be 150 characters or fewer.';
+      return;
+    }
+
+    const day = this.selectedDay;
+    this.savingHoliday = true;
+    this.successMessage = '';
+    this.errorMessage = '';
+
+    this.rtoService.saveHoliday(day.date, name).subscribe({
+      next: () => {
+        this.successMessage = `🏛 Holiday saved for ${this.getDayLabel(day)}!`;
+        this.savingHoliday = false;
+        this.closeDayModal();
+        this.loadData();
+        setTimeout(() => (this.successMessage = ''), 4000);
+      },
+      error: (err) => {
+        this.errorMessage = 'Failed to save holiday. Please try again.';
+        this.savingHoliday = false;
+        console.error(err);
+      },
+    });
+  }
+
+  removeHoliday(): void {
+    if (!this.selectedDay || this.savingHoliday) return;
+
+    const day = this.selectedDay;
+    this.savingHoliday = true;
+    this.successMessage = '';
+    this.errorMessage = '';
+
+    this.rtoService.removeHoliday(day.date).subscribe({
+      next: () => {
+        this.successMessage = `🗑 Holiday removed for ${this.getDayLabel(day)}.`;
+        this.savingHoliday = false;
+        this.closeDayModal();
+        this.loadData();
+        setTimeout(() => (this.successMessage = ''), 4000);
+      },
+      error: (err) => {
+        this.errorMessage = 'Failed to remove holiday. Please try again.';
+        this.savingHoliday = false;
+        console.error(err);
+      },
     });
   }
 
@@ -216,7 +278,7 @@ export class CalendarComponent implements OnInit {
   private buildCalendar(data: MonthlyData): CalendarDay[][] {
     const inOfficeSet = new Set(data.attendance.filter(a => a.status === 'IN_OFFICE').map(a => a.date));
     const absenceSet = new Set(data.attendance.filter(a => a.status === 'APPROVED_ABSENCE').map(a => a.date));
-    const holidayMap = new Map(data.holidays.map(h => [h.date, h.name]));
+    const holidayMap = new Map(data.holidays.map(h => [h.date, { name: h.name, isShared: !!h.isShared }]));
     // Expose approved absences count in stats
     this.stats = { ...data.stats, approvedAbsences: absenceSet.size };
 
@@ -273,13 +335,14 @@ export class CalendarComponent implements OnInit {
     todayStr: string,
     inOfficeSet: Set<string>,
     absenceSet: Set<string>,
-    holidayMap: Map<string, string>
+    holidayMap: Map<string, { name: string; isShared: boolean }>
   ): CalendarDay {
     const dateStr = this.formatDate(date);
     const dow = date.getDay(); // 0=Sun
     const isWeekend = dow === 0 || dow === 6;
     const isRtoDay = dow === 2 || dow === 3 || dow === 4; // Tue–Thu
     const isHoliday = holidayMap.has(dateStr);
+    const holidayEntry = holidayMap.get(dateStr);
     return {
       date: dateStr,
       dayNumber: date.getDate(),
@@ -291,7 +354,8 @@ export class CalendarComponent implements OnInit {
       isInOffice: inOfficeSet.has(dateStr),
       isApprovedAbsence: absenceSet.has(dateStr),
       isHoliday,
-      holidayName: holidayMap.get(dateStr),
+      holidayName: holidayEntry?.name,
+      isSharedHoliday: holidayEntry?.isShared ?? false,
       isPast: dateStr < todayStr,
     };
   }

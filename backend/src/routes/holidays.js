@@ -15,13 +15,14 @@ router.get('/', auth, async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      "SELECT date, name FROM holidays WHERE YEAR(date) = ? ORDER BY date",
-      [year]
+      "SELECT user_id, date, name FROM holidays WHERE YEAR(date) = ? AND (user_id = ? OR user_id = 0) ORDER BY date, user_id ASC",
+      [year, req.user.id]
     );
 
     const holidays = rows.map(h => ({
       date: h.date instanceof Date ? toDateString(h.date) : String(h.date),
       name: h.name,
+      isShared: h.user_id === 0,
     }));
 
     res.json(holidays);
@@ -41,13 +42,19 @@ router.post('/', auth, async (req, res) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
     }
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Holiday name must not be empty.' });
+    }
+    if (name.trim().length > 150) {
+      return res.status(400).json({ error: 'Holiday name must be 150 characters or fewer.' });
+    }
 
     await pool.query(
-      'INSERT INTO holidays (date, name) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)',
-      [date, name]
+      'INSERT INTO holidays (user_id, date, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)',
+      [req.user.id, date, name.trim()]
     );
 
-    res.json({ success: true, date, name });
+    res.json({ success: true, date, name: name.trim() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error.' });
@@ -65,12 +72,12 @@ router.delete('/:date', auth, async (req, res) => {
     }
 
     const [result] = await pool.query(
-      'DELETE FROM holidays WHERE date = ?',
-      [dateStr]
+      'DELETE FROM holidays WHERE date = ? AND user_id = ?',
+      [dateStr, req.user.id]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'No holiday found for this date.' });
+      return res.status(404).json({ error: 'No personal holiday found for this date.' });
     }
 
     res.json({ success: true, date: dateStr });
