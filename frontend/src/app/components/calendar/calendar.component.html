@@ -185,7 +185,7 @@
       <span class="status-badge empty">○ No record for this day</span>
     </div>
 
-    <div class="holiday-entry" *ngIf="selectedDay">
+    <div class="holiday-entry" *ngIf="selectedDay && !selectedDay.isSharedHoliday">
       <label class="holiday-entry-label" for="holidayName">Holiday name</label>
       <input
         id="holidayName"
@@ -193,6 +193,7 @@
         type="text"
         [(ngModel)]="holidayNameDraft"
         placeholder="e.g. Labor Day"
+        maxlength="150"
       />
       <div class="holiday-entry-hint">
         Save a manual holiday entry for this date. The note is used as the holiday name.
@@ -221,6 +222,7 @@
         (click)="saveHoliday()"
         [disabled]="savingHoliday || !holidayNameDraft.trim()"
         [class.active]="selectedDay.isHoliday"
+        *ngIf="!selectedDay.isSharedHoliday"
       >
         🏛 {{ selectedDay.isHoliday ? 'Update Holiday' : 'Holiday' }}
         <span class="rto-hint holiday-hint">{{ selectedDay.isHoliday ? 'edit note / name' : 'manual holiday entry' }}</span>
@@ -235,7 +237,8 @@
       <button
         class="modal-btn btn-clear btn-remove-holiday"
         (click)="removeHoliday()"
-        *ngIf="selectedDay.isHoliday"
+        [disabled]="savingHoliday"
+        *ngIf="selectedDay.isHoliday && !selectedDay.isSharedHoliday"
       >
         🗑 Remove Holiday
       </button>

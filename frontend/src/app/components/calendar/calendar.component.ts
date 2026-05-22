@@ -200,6 +200,10 @@ export class CalendarComponent implements OnInit {
       this.errorMessage = 'Holiday name is required.';
       return;
     }
+    if (name.length > 150) {
+      this.errorMessage = 'Holiday name must be 150 characters or fewer.';
+      return;
+    }
 
     const day = this.selectedDay;
     this.savingHoliday = true;
@@ -223,7 +227,7 @@ export class CalendarComponent implements OnInit {
   }
 
   removeHoliday(): void {
-    if (!this.selectedDay) return;
+    if (!this.selectedDay || this.savingHoliday) return;
 
     const day = this.selectedDay;
     this.savingHoliday = true;
@@ -274,7 +278,7 @@ export class CalendarComponent implements OnInit {
   private buildCalendar(data: MonthlyData): CalendarDay[][] {
     const inOfficeSet = new Set(data.attendance.filter(a => a.status === 'IN_OFFICE').map(a => a.date));
     const absenceSet = new Set(data.attendance.filter(a => a.status === 'APPROVED_ABSENCE').map(a => a.date));
-    const holidayMap = new Map(data.holidays.map(h => [h.date, h.name]));
+    const holidayMap = new Map(data.holidays.map(h => [h.date, { name: h.name, isShared: !!h.isShared }]));
     // Expose approved absences count in stats
     this.stats = { ...data.stats, approvedAbsences: absenceSet.size };
 
@@ -331,13 +335,14 @@ export class CalendarComponent implements OnInit {
     todayStr: string,
     inOfficeSet: Set<string>,
     absenceSet: Set<string>,
-    holidayMap: Map<string, string>
+    holidayMap: Map<string, { name: string; isShared: boolean }>
   ): CalendarDay {
     const dateStr = this.formatDate(date);
     const dow = date.getDay(); // 0=Sun
     const isWeekend = dow === 0 || dow === 6;
     const isRtoDay = dow === 2 || dow === 3 || dow === 4; // Tue–Thu
     const isHoliday = holidayMap.has(dateStr);
+    const holidayEntry = holidayMap.get(dateStr);
     return {
       date: dateStr,
       dayNumber: date.getDate(),
@@ -349,7 +354,8 @@ export class CalendarComponent implements OnInit {
       isInOffice: inOfficeSet.has(dateStr),
       isApprovedAbsence: absenceSet.has(dateStr),
       isHoliday,
-      holidayName: holidayMap.get(dateStr),
+      holidayName: holidayEntry?.name,
+      isSharedHoliday: holidayEntry?.isShared ?? false,
       isPast: dateStr < todayStr,
     };
   }

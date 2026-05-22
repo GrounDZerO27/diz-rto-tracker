@@ -24,10 +24,20 @@ CREATE TABLE IF NOT EXISTS attendance (
 );
 
 CREATE TABLE IF NOT EXISTS holidays (
-  id   INT AUTO_INCREMENT PRIMARY KEY,
-  date DATE UNIQUE NOT NULL,
-  name VARCHAR(150) NOT NULL
+  id      INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL DEFAULT 0,   -- 0 = shared public holiday; real user IDs = personal
+  date    DATE NOT NULL,
+  name    VARCHAR(150) NOT NULL,
+  UNIQUE KEY unique_user_date (user_id, date)
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MIGRATION (existing databases only): run this once if upgrading from < 3.1.0
+-- ALTER TABLE holidays
+--   ADD COLUMN user_id INT NOT NULL DEFAULT 0 AFTER id,
+--   DROP INDEX date,
+--   ADD UNIQUE KEY unique_user_date (user_id, date);
+-- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id         INT AUTO_INCREMENT PRIMARY KEY,

@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+// Fail fast if required secrets are missing — checked once here, before any routes are loaded
+if (!process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not set. Add it to your .env file.');
+}
+
 const express   = require('express');
 const cors      = require('cors');
 const helmet    = require('helmet');
