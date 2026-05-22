@@ -28,9 +28,11 @@ export class CalendarComponent implements OnInit {
   loading = false;
   checkingIn = false;
   loggingLeave = false;
+  savingHoliday = false;
   errorMessage = '';
   successMessage = '';
   selectedDay: CalendarDay | null = null;
+  holidayNameDraft = '';
 
   years: number[] = [];
   monthNames = MONTH_NAMES;
@@ -160,12 +162,14 @@ export class CalendarComponent implements OnInit {
    * Opens the action modal for a day cell.
    */
   openDayModal(day: CalendarDay): void {
-    if (!day.isCurrentMonth || day.isWeekend || day.isHoliday) return;
+    if (!day.isCurrentMonth || day.isWeekend) return;
     this.selectedDay = day;
+    this.holidayNameDraft = day.holidayName ?? '';
   }
 
   closeDayModal(): void {
     this.selectedDay = null;
+    this.holidayNameDraft = '';
   }
 
   setDayStatus(status: 'IN_OFFICE' | 'APPROVED_ABSENCE'): void {
@@ -185,6 +189,60 @@ export class CalendarComponent implements OnInit {
     this.rtoService.removeAttendance(day.date).subscribe({
       next: () => this.loadData(),
       error: (err) => { this.errorMessage = 'Failed to remove record.'; console.error(err); },
+    });
+  }
+
+  saveHoliday(): void {
+    if (!this.selectedDay) return;
+
+    const name = this.holidayNameDraft.trim();
+    if (!name) {
+      this.errorMessage = 'Holiday name is required.';
+      return;
+    }
+
+    const day = this.selectedDay;
+    this.savingHoliday = true;
+    this.successMessage = '';
+    this.errorMessage = '';
+
+    this.rtoService.saveHoliday(day.date, name).subscribe({
+      next: () => {
+        this.successMessage = `🏛 Holiday saved for ${this.getDayLabel(day)}!`;
+        this.savingHoliday = false;
+        this.closeDayModal();
+        this.loadData();
+        setTimeout(() => (this.successMessage = ''), 4000);
+      },
+      error: (err) => {
+        this.errorMessage = 'Failed to save holiday. Please try again.';
+        this.savingHoliday = false;
+        console.error(err);
+      },
+    });
+  }
+
+  removeHoliday(): void {
+    if (!this.selectedDay) return;
+
+    const day = this.selectedDay;
+    this.savingHoliday = true;
+    this.successMessage = '';
+    this.errorMessage = '';
+
+    this.rtoService.removeHoliday(day.date).subscribe({
+      next: () => {
+        this.successMessage = `🗑 Holiday removed for ${this.getDayLabel(day)}.`;
+        this.savingHoliday = false;
+        this.closeDayModal();
+        this.loadData();
+        setTimeout(() => (this.successMessage = ''), 4000);
+      },
+      error: (err) => {
+        this.errorMessage = 'Failed to remove holiday. Please try again.';
+        this.savingHoliday = false;
+        console.error(err);
+      },
     });
   }
 

@@ -32,6 +32,21 @@ export class RtoService {
     );
   }
 
+  saveHoliday(date: string, name: string): Observable<{ success: boolean; date: string; name: string }> {
+    return this.http.post<{ success: boolean; date: string; name: string }>(
+      `${this.api}/holidays`,
+      { date, name },
+      { headers: this.headers }
+    );
+  }
+
+  removeHoliday(date: string): Observable<{ success: boolean; date: string }> {
+    return this.http.delete<{ success: boolean; date: string }>(
+      `${this.api}/holidays/${date}`,
+      { headers: this.headers }
+    );
+  }
+
   removeAttendance(date: string): Observable<{ success: boolean; date: string }> {
     return this.http.delete<{ success: boolean; date: string }>(
       `${this.api}/attendance/${date}`,

@@ -8,7 +8,7 @@ function authMiddleware(req, res, next) {
 
   const token = header.slice(7);
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-in-prod');
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.user = payload; // { id, employeeNo, fullName }
     next();
   } catch {

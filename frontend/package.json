@@ -1,6 +1,6 @@
 {
   "name": "rto-tracker-frontend",
-  "version": "1.0.0",
+  "version": "5.0.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
