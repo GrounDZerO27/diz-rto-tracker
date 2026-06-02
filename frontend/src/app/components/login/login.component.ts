@@ -23,7 +23,9 @@ export class LoginComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     try {
       ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-    } catch (e) {}
+    } catch (e) {
+      console.warn('AdSense initialization failed', e);
+    }
   }
 
   submit(): void {
