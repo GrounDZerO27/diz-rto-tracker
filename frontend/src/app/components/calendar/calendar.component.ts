@@ -106,8 +106,17 @@ export class CalendarComponent implements OnInit {
   loadData(): void {
     this.loading = true;
     this.errorMessage = '';
-    this.rtoService.getMonthlyData(this.selectedYear, this.selectedMonth).subscribe({
+
+    // Reset immediately so stale values are never shown during loading
+    this.ytdData = { year: 0, month: 0, ytdActualDays: 0, ytdExpectedDays: 0, ytdPercentage: 0 };
+
+    // Capture selection at request time to guard against out-of-order responses
+    const year  = this.selectedYear;
+    const month = this.selectedMonth;
+
+    this.rtoService.getMonthlyData(year, month).subscribe({
       next: (data) => {
+        if (year !== this.selectedYear || month !== this.selectedMonth) return;
         this.monthlyData = data;
         this.stats = data.stats;
         this.calendarWeeks = this.buildCalendar(data);
@@ -119,9 +128,16 @@ export class CalendarComponent implements OnInit {
         console.error(err);
       },
     });
-    this.rtoService.getYtdData(this.selectedYear, this.selectedMonth).subscribe({
-      next: (ytd) => { this.ytdData = ytd; },
-      error: (err) => { console.error('YTD load failed', err); },
+
+    this.rtoService.getYtdData(year, month).subscribe({
+      next: (ytd) => {
+        if (year !== this.selectedYear || month !== this.selectedMonth) return;
+        this.ytdData = ytd;
+      },
+      error: (err) => {
+        console.error('YTD load failed', err);
+        this.ytdData = { year: 0, month: 0, ytdActualDays: 0, ytdExpectedDays: 0, ytdPercentage: 0 };
+      },
     });
   }
 

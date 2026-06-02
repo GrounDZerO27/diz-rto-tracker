@@ -105,8 +105,8 @@ router.get('/ytd', auth, async (req, res) => {
       [req.user.id, startDate, endDate]
     );
     const [holidayRows] = await pool.query(
-      'SELECT date FROM holidays WHERE date BETWEEN ? AND ? ORDER BY date',
-      [startDate, endDate]
+      'SELECT date FROM holidays WHERE date BETWEEN ? AND ? AND (user_id = ? OR user_id = 0) ORDER BY date, user_id ASC',
+      [startDate, endDate, req.user.id]
     );
 
     const attendanceList = attendanceRows.map(r => ({
@@ -168,7 +168,5 @@ router.delete('/:date', auth, async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
-
-module.exports = router;
 
 module.exports = router;

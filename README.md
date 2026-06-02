@@ -112,10 +112,6 @@ The Angular dev server proxies `/api` requests to `http://localhost:3000` via `p
 
 ---
 
-## Email & Password Reset
-
----
-
 ## Changelog
 
 ### v5.1.0 — June 2026
