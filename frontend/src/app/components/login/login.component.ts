@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -11,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css'],
 })
-export class LoginComponent {
+export class LoginComponent implements AfterViewInit {
   employeeNo = '';
   password   = '';
   error      = '';
@@ -19,6 +19,12 @@ export class LoginComponent {
   showPass   = false;
 
   constructor(private auth: AuthService, private router: Router) {}
+
+  ngAfterViewInit(): void {
+    try {
+      ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+    } catch (e) {}
+  }
 
   submit(): void {
     this.error = '';

@@ -32,7 +32,7 @@
     <div class="stat-card">
       <div class="stat-value" [style.color]="getYtdColor()">{{ ytdData.ytdPercentage }}%</div>
       <div class="stat-label">YTD</div>
-      <div class="stat-sub">Jan–{{ currentMonthName }} compliance</div>
+      <div class="stat-sub">{{ ytdData.month > 0 ? 'Jan\u2013' + ytdMonthName + ' compliance' : 'Loading\u2026' }}</div>
     </div>
   </div>
 
