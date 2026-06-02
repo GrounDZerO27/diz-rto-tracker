@@ -4,19 +4,21 @@ const pool    = require('../db');
 const auth    = require('../middleware/auth');
 const { toDateString, calculateRtoStats } = require('../rtoUtils');
 
+/** Zero-pad a number to 2 digits. */
+const pad = n => String(n).padStart(2, '0');
+
 /**
  * GET /api/attendance?year=2026&month=4
  */
 router.get('/', auth, async (req, res) => {
   try {
-    const year  = parseInt(req.query.year);
-    const month = parseInt(req.query.month);
+    const year  = parseInt(req.query.year,  10);
+    const month = parseInt(req.query.month, 10);
 
     if (!year || !month || month < 1 || month > 12) {
       return res.status(400).json({ error: 'Valid year and month (1-12) are required.' });
     }
 
-    const pad = n => String(n).padStart(2, '0');
     const startDate = `${year}-${pad(month)}-01`;
     const daysInMonth = new Date(year, month, 0).getDate();
     const endDate = `${year}-${pad(month)}-${pad(daysInMonth)}`;
@@ -27,18 +29,24 @@ router.get('/', auth, async (req, res) => {
     );
 
     const [holidayRows] = await pool.query(
-      'SELECT date, name FROM holidays WHERE date BETWEEN ? AND ? ORDER BY date',
-      [startDate, endDate]
+      'SELECT date, name FROM holidays WHERE date BETWEEN ? AND ? AND (user_id = ? OR user_id = 0) ORDER BY date, user_id ASC',
+      [startDate, endDate, req.user.id]
     );
 
     const monthAttendance = attendanceRows.map(r => ({
       date:   r.date instanceof Date ? toDateString(r.date) : String(r.date),
       status: r.status,
     }));
-    const monthHolidays = holidayRows.map(h => ({
-      date: h.date instanceof Date ? toDateString(h.date) : String(h.date),
-      name: h.name,
-    }));
+
+    // Deduplicate holidays by date; ORDER BY user_id ASC means the personal
+    // entry (higher id) is processed last and overwrites the shared one — so
+    // a user's custom name for a public holiday takes precedence.
+    const holidayByDate = new Map();
+    for (const h of holidayRows) {
+      const dateStr = h.date instanceof Date ? toDateString(h.date) : String(h.date);
+      holidayByDate.set(dateStr, h.name);
+    }
+    const monthHolidays = Array.from(holidayByDate.entries()).map(([date, name]) => ({ date, name }));
 
     const inOfficeDates        = monthAttendance.filter(r => r.status === 'IN_OFFICE').map(r => r.date);
     const approvedAbsenceDates = monthAttendance.filter(r => r.status === 'APPROVED_ABSENCE').map(r => r.date);
@@ -88,14 +96,13 @@ router.post('/checkin', auth, async (req, res) => {
  */
 router.get('/ytd', auth, async (req, res) => {
   try {
-    const year  = parseInt(req.query.year);
-    const month = parseInt(req.query.month);
+    const year  = parseInt(req.query.year,  10);
+    const month = parseInt(req.query.month, 10);
 
     if (!year || !month || month < 1 || month > 12) {
       return res.status(400).json({ error: 'Valid year and month (1-12) are required.' });
     }
 
-    const pad = n => String(n).padStart(2, '0');
     const startDate = `${year}-01-01`;
     const daysInEndMonth = new Date(year, month, 0).getDate();
     const endDate = `${year}-${pad(month)}-${pad(daysInEndMonth)}`;
@@ -113,9 +120,13 @@ router.get('/ytd', auth, async (req, res) => {
       date:   r.date instanceof Date ? toDateString(r.date) : String(r.date),
       status: r.status,
     }));
-    const holidayList = holidayRows.map(h => ({
-      date: h.date instanceof Date ? toDateString(h.date) : String(h.date),
-    }));
+
+    // Deduplicate holiday dates; calculateRtoStats uses a Set internally but
+    // deduplicating here makes the intent explicit and avoids redundant loops.
+    const holidayDateSet = new Set(
+      holidayRows.map(h => h.date instanceof Date ? toDateString(h.date) : String(h.date))
+    );
+    const holidayList = Array.from(holidayDateSet).map(date => ({ date }));
 
     let ytdActualDays   = 0;
     let ytdExpectedDays = 0;

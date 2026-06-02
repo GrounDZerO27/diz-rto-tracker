@@ -114,6 +114,13 @@ export class CalendarComponent implements OnInit {
     const year  = this.selectedYear;
     const month = this.selectedMonth;
 
+    // YTD: when viewing the live current month, calculate through the last
+    // *completed* month so the widget never shows a misleadingly low %
+    // caused by zero data in an in-progress month.
+    const isLiveCurrentMonth = year  === this.today.getFullYear() &&
+                               month === (this.today.getMonth() + 1);
+    const ytdMonth = isLiveCurrentMonth && month > 1 ? month - 1 : month;
+
     this.rtoService.getMonthlyData(year, month).subscribe({
       next: (data) => {
         if (year !== this.selectedYear || month !== this.selectedMonth) return;
@@ -129,7 +136,7 @@ export class CalendarComponent implements OnInit {
       },
     });
 
-    this.rtoService.getYtdData(year, month).subscribe({
+    this.rtoService.getYtdData(year, ytdMonth).subscribe({
       next: (ytd) => {
         if (year !== this.selectedYear || month !== this.selectedMonth) return;
         this.ytdData = ytd;
@@ -292,6 +299,10 @@ export class CalendarComponent implements OnInit {
     if (this.ytdData.ytdPercentage >= 90) return '#16a34a';
     if (this.ytdData.ytdPercentage >= 70) return '#d97706';
     return '#dc2626';
+  }
+
+  get ytdMonthName(): string {
+    return this.ytdData.month > 0 ? MONTH_NAMES[this.ytdData.month - 1] : '';
   }
 
   // ────────────────────────────────────────────
