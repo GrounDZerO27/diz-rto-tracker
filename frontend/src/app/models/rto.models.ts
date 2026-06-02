@@ -24,6 +24,14 @@ export interface MonthlyData {
   stats: RtoStats;
 }
 
+export interface YtdData {
+  year: number;
+  month: number;
+  ytdActualDays: number;
+  ytdExpectedDays: number;
+  ytdPercentage: number;
+}
+
 export interface CalendarDay {
   date: string;          // YYYY-MM-DD
   dayNumber: number;

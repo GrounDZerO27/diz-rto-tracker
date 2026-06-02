@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RtoService } from '../../services/rto.service';
-import { MonthlyData, CalendarDay, RtoStats } from '../../models/rto.models';
+import { MonthlyData, CalendarDay, RtoStats, YtdData } from '../../models/rto.models';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -24,6 +24,7 @@ export class CalendarComponent implements OnInit {
   monthlyData: MonthlyData | null = null;
   calendarWeeks: CalendarDay[][] = [];
   stats: RtoStats = { expectedDays: 0, actualDays: 0, percentage: 0, approvedAbsences: 0 };
+  ytdData: YtdData = { year: 0, month: 0, ytdActualDays: 0, ytdExpectedDays: 0, ytdPercentage: 0 };
 
   loading = false;
   checkingIn = false;
@@ -105,8 +106,17 @@ export class CalendarComponent implements OnInit {
   loadData(): void {
     this.loading = true;
     this.errorMessage = '';
-    this.rtoService.getMonthlyData(this.selectedYear, this.selectedMonth).subscribe({
+
+    // Reset immediately so stale values are never shown during loading
+    this.ytdData = { year: 0, month: 0, ytdActualDays: 0, ytdExpectedDays: 0, ytdPercentage: 0 };
+
+    // Capture selection at request time to guard against out-of-order responses
+    const year  = this.selectedYear;
+    const month = this.selectedMonth;
+
+    this.rtoService.getMonthlyData(year, month).subscribe({
       next: (data) => {
+        if (year !== this.selectedYear || month !== this.selectedMonth) return;
         this.monthlyData = data;
         this.stats = data.stats;
         this.calendarWeeks = this.buildCalendar(data);
@@ -116,6 +126,17 @@ export class CalendarComponent implements OnInit {
         this.errorMessage = 'Failed to load data. Make sure the backend is running.';
         this.loading = false;
         console.error(err);
+      },
+    });
+
+    this.rtoService.getYtdData(year, month).subscribe({
+      next: (ytd) => {
+        if (year !== this.selectedYear || month !== this.selectedMonth) return;
+        this.ytdData = ytd;
+      },
+      error: (err) => {
+        console.error('YTD load failed', err);
+        this.ytdData = { year: 0, month: 0, ytdActualDays: 0, ytdExpectedDays: 0, ytdPercentage: 0 };
       },
     });
   }
@@ -265,6 +286,12 @@ export class CalendarComponent implements OnInit {
     if (this.stats.percentage >= 90) return 'On Track';
     if (this.stats.percentage >= 70) return 'Needs Improvement';
     return 'At Risk';
+  }
+
+  getYtdColor(): string {
+    if (this.ytdData.ytdPercentage >= 90) return '#16a34a';
+    if (this.ytdData.ytdPercentage >= 70) return '#d97706';
+    return '#dc2626';
   }
 
   // ────────────────────────────────────────────

@@ -83,6 +83,66 @@ router.post('/checkin', auth, async (req, res) => {
 });
 
 /**
+ * GET /api/attendance/ytd?year=YYYY&month=MM
+ * Returns year-to-date aggregated RTO stats from January through the given month.
+ */
+router.get('/ytd', auth, async (req, res) => {
+  try {
+    const year  = parseInt(req.query.year);
+    const month = parseInt(req.query.month);
+
+    if (!year || !month || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Valid year and month (1-12) are required.' });
+    }
+
+    const pad = n => String(n).padStart(2, '0');
+    const startDate = `${year}-01-01`;
+    const daysInEndMonth = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${pad(month)}-${pad(daysInEndMonth)}`;
+
+    const [attendanceRows] = await pool.query(
+      'SELECT date, status FROM attendance WHERE user_id = ? AND date BETWEEN ? AND ? ORDER BY date',
+      [req.user.id, startDate, endDate]
+    );
+    const [holidayRows] = await pool.query(
+      'SELECT date FROM holidays WHERE date BETWEEN ? AND ? AND (user_id = ? OR user_id = 0) ORDER BY date, user_id ASC',
+      [startDate, endDate, req.user.id]
+    );
+
+    const attendanceList = attendanceRows.map(r => ({
+      date:   r.date instanceof Date ? toDateString(r.date) : String(r.date),
+      status: r.status,
+    }));
+    const holidayList = holidayRows.map(h => ({
+      date: h.date instanceof Date ? toDateString(h.date) : String(h.date),
+    }));
+
+    let ytdActualDays   = 0;
+    let ytdExpectedDays = 0;
+
+    for (let m = 1; m <= month; m++) {
+      const monthStart = `${year}-${pad(m)}-01`;
+      const monthEnd   = `${year}-${pad(m)}-${pad(new Date(year, m, 0).getDate())}`;
+
+      const inOfficeDates        = attendanceList.filter(r => r.status === 'IN_OFFICE'        && r.date >= monthStart && r.date <= monthEnd).map(r => r.date);
+      const approvedAbsenceDates = attendanceList.filter(r => r.status === 'APPROVED_ABSENCE' && r.date >= monthStart && r.date <= monthEnd).map(r => r.date);
+      const holidayDates         = holidayList.filter(h => h.date >= monthStart && h.date <= monthEnd).map(h => h.date);
+
+      const s = calculateRtoStats(year, m, inOfficeDates, holidayDates, approvedAbsenceDates);
+      ytdActualDays   += s.actualDays;
+      ytdExpectedDays += s.expectedDays;
+    }
+
+    const ytdPercentage = ytdExpectedDays > 0 ? Math.round((ytdActualDays / ytdExpectedDays) * 100) : 0;
+
+    res.json({ year, month, ytdActualDays, ytdExpectedDays, ytdPercentage });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+/**
  * DELETE /api/attendance/:date
  */
 router.delete('/:date', auth, async (req, res) => {
@@ -108,7 +168,5 @@ router.delete('/:date', auth, async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
-
-module.exports = router;
 
 module.exports = router;

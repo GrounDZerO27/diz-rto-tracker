@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { MonthlyData, Holiday } from '../models/rto.models';
+import { MonthlyData, Holiday, YtdData } from '../models/rto.models';
 import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
@@ -18,6 +18,13 @@ export class RtoService {
   getMonthlyData(year: number, month: number): Observable<MonthlyData> {
     return this.http.get<MonthlyData>(
       `${this.api}/attendance?year=${year}&month=${month}`,
+      { headers: this.headers }
+    );
+  }
+
+  getYtdData(year: number, month: number): Observable<YtdData> {
+    return this.http.get<YtdData>(
+      `${this.api}/attendance/ytd?year=${year}&month=${month}`,
       { headers: this.headers }
     );
   }

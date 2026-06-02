@@ -1,4 +1,4 @@
-# RTO Tracker &nbsp;![version](https://img.shields.io/badge/version-3.0.0-blue)
+ # RTO Tracker &nbsp;![version](https://img.shields.io/badge/version-5.1.0-blue)
 
 Personal return-to-office compliance tracker. Logs daily attendance against company RTO policy (Tue/Wed/Thu requirement) and gives a monthly compliance percentage at a glance.
 
@@ -72,7 +72,7 @@ npm install
 node src/index.js     # http://localhost:3000
 ```
 
-Requires a MySQL database. Run `schema.sql` once to create tables and seed Philippine public holidays. Configure credentials in `backend/.env` (see `.env.example` if present).
+Requires a MySQL database. Before running `backend/schema.sql`, make sure the `USE` statement in that file matches your local database name (or select the correct database first), then run it once to create tables and seed Philippine public holidays. Configure credentials in `backend/.env` (see `.env.example` if present).
 
 ### Frontend
 
@@ -91,6 +91,7 @@ The Angular dev server proxies `/api` requests to `http://localhost:3000` via `p
 | Method | Endpoint | Body / Params | Description |
 |--------|----------|---------------|-------------|
 | GET | `/api/attendance` | `?year=&month=` | Monthly attendance, holidays, and stats |
+| GET | `/api/attendance/ytd` | `?year=&month=` | Year-to-date aggregated RTO stats (Jan–selected month) |
 | POST | `/api/attendance/checkin` | `{ date?, status }` | Upsert a record (`IN_OFFICE` or `APPROVED_ABSENCE`) |
 | DELETE | `/api/attendance/:date` | — | Remove a record by date (`YYYY-MM-DD`) |
 | GET | `/api/holidays` | `?year=` | List holidays for a year |
@@ -108,6 +109,21 @@ The Angular dev server proxies `/api` requests to `http://localhost:3000` via `p
 - Philippine public holidays for 2026 are pre-seeded via `schema.sql`.
 - **Manual holiday entry** is per-user (stored in the shared `holidays` table) — any weekday in the calendar modal now has a Holiday button where you can type a holiday name and save it directly.
 - The holiday entry form pre-fills the existing name when editing a day already marked as a holiday.
+
+---
+
+## Changelog
+
+### v5.1.0 — June 2026
+- **Feature:** Added YTD (Year-to-Date) compliance widget to the dashboard stats row.
+- **Backend:** New `GET /api/attendance/ytd?year=&month=` endpoint aggregates RTO stats from January through the selected month.
+- **Frontend:** `YtdData` model, `getYtdData()` service method, and `ytdData` property in the calendar component.
+- **UI:** YTD widget displays Jan–current month compliance percentage with color-coded status (green ≥ 90 %, amber ≥ 70 %, red < 70 %). Stats row updated to 6-column grid.
+
+### v5.0.0
+- Manual holiday entry per user via calendar day modal.
+- Holiday name pre-fill when editing an existing holiday.
+- Shared holidays table with per-user attendance.
 
 ---
 
