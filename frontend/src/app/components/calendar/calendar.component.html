@@ -29,6 +29,11 @@
       <div class="stat-label">Approved Leaves</div>
       <div class="stat-sub">Logged this month</div>
     </div>
+    <div class="stat-card">
+      <div class="stat-value" [style.color]="getYtdColor()">{{ ytdData.ytdPercentage }}%</div>
+      <div class="stat-label">YTD</div>
+      <div class="stat-sub">Jan–{{ currentMonthName }} compliance</div>
+    </div>
   </div>
 
   <!-- Main Card -->
