@@ -279,8 +279,15 @@ export class CalendarComponent implements OnInit {
   }
 
   getDayLabel(day: CalendarDay): string {
-    const d = new Date(day.date + 'T12:00:00');
-    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    // day.date is 'YYYY-MM-DD'. Create a UTC date to avoid timezone shifts on parsing.
+    const d = new Date(day.date + 'T00:00:00.000Z');
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'Asia/Manila',
+    });
   }
 
   getPercentageColor(): string {
@@ -399,13 +406,18 @@ export class CalendarComponent implements OnInit {
   }
 
   private formatDate(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
 
   private formatDisplayDate(date: Date): string {
-    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'Asia/Manila',
+    });
   }
 }
